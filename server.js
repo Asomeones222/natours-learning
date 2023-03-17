@@ -17,7 +17,7 @@ mongoose
         // useFindAndModify: false,
     })
     .then((connection) => {
-        console.log(connection);
+        // console.log(connection);
         console.log("Connected to database");
     });
 
@@ -25,7 +25,7 @@ const tourSchema = new mongoose.Schema({
     name: {
         type: String,
         required: [true, "Tour must have a name"],
-        unqiue: true, // No two documents can have the same name
+        unique: true, // No two documents can have the same name
     },
     rating: {
         type: Number,
@@ -39,6 +39,22 @@ const tourSchema = new mongoose.Schema({
 
 // Created a model from the schema from which we can create documents
 const Tour = mongoose.model("Tour", tourSchema);
+
+const testTour = new Tour({
+    name: "Forest Hiker",
+    rating: 4.7,
+    price: 497,
+});
+
+testTour
+    .save()
+    .then((doc) => {
+        console.log("saved document");
+        console.log(doc);
+    })
+    .catch((err) => {
+        console.log(err);
+    });
 
 const app = require("./app");
 // $env:NODE_ENV="development"
