@@ -7,8 +7,6 @@ const {
     createTour,
     updateTour,
     deleteTour,
-    validateID,
-    validateBody,
 } = require("../controllers/tourController");
 
 // Create a router for each api resource. We can connect this router as a middleware. This way we can create a route for each resource.
@@ -17,7 +15,8 @@ const router = express.Router();
 // param method calls a handler function (controller) only if a certain url parameter is present. In this case it's id.
 router.param("id", (req, res, next, id) => {
     console.log(`Parameter value is ${id}`);
-    validateID(req, res, next, id);
+    // validateID(req, res, next, id);
+    next();
 });
 
 router
@@ -27,7 +26,9 @@ router
     .get((req, res) => {
         getAllTours(req, res);
     })
-    .post(validateBody, createTour);
+    .post((req, res) => {
+        createTour(req, res);
+    });
 
 router
     // This here is api/v1/tours/:id

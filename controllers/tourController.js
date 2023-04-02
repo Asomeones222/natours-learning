@@ -1,18 +1,5 @@
-const fs = require("fs");
+const Tour = require("../model/tourModel");
 
-/** @type {Array} */
-const tours = JSON.parse(
-    fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
-);
-
-module.exports.validateID = (req, res, next, id) => {
-    if (+id > tours.length)
-        return res.status(404).json({
-            status: "fail",
-            message: "Invalid ID",
-        });
-    next();
-};
 module.exports.validateBody = (req, res, next) => {
     if (!req.body.name || !req.body.price)
         return res.status(400).json({
@@ -21,66 +8,132 @@ module.exports.validateBody = (req, res, next) => {
         });
     next();
 };
-module.exports.getAllTours = function (req, res) {
+module.exports.getAllTours = async function (req, res) {
     // Whenever an http get method is requested for this route, this callback function will be invoked
     // This callback functions is called a Route handler
-    res.status(200).json({
-        status: "success",
-        results: tours.length,
-        requestedAt: req.requestTime,
-        data: {
-            tours: tours,
-        },
-    });
-    // res.type('json');
-    // fs.createReadStream(`${__dirname}/dev-data/data/tours-simple.json`).pipe(res);
-};
-module.exports.getTour = function (req, res) {
-    // params stores the place holder variables
+    try {
+        // Build query. Use map for quick delete
+        const queryMap = new Map(Object.entries(req.query));
+        console.log(queryMap);
+        const excludedQueries = ["page", "limit", "fields"];
+        excludedQueries.forEach((el) => queryMap.delete(el));
+        console.log(queryMap);
+        const queryObj = JSON.parse(
+            JSON.stringify(Object.fromEntries(queryMap)).replace(
+                /\b(gte|gt|lte|lt)\b/g,
+                (matchedString) => `$${matchedString}`
+            )
+        );
 
-    const tourId = +req.params.id;
-    const tour = tours.find((_tour) => _tour.id === tourId);
-    res.status(200).json({
-        status: "success",
-        data: {
-            tour: tour,
-        },
-    });
-};
-module.exports.createTour = function (req, res) {
-    // console.log(req.body);
-    const id = tours.at(-1).id + 1;
-    const newTour = { id: id, ...req.body };
-    tours.push(newTour);
-
-    //prettier-ignore
-    fs.writeFile(
-        `${__dirname}/../dev-data/data/tours-simple.json`, JSON.stringify(tours), "utf-8", () => {
-            console.log("New tour saved to file");
+        // Sort
+        let query = Tour.find();
+        if (queryObj.sort) {
+            query = query.sort(queryObj.sort);
         }
-    );
+        // Only sent wanted fields using the select method on the query
+        if (req.query.fields) {
+            console.log("Fields are");
+            const { fields } = req.query;
+            query = query.select(fields.split(",").join(" "));
+        }
+        // Always remove __v from the response
+        query = query.select("-__v");
 
-    res.status(201).json({
-        status: "success",
-        data: {
-            tour: newTour,
-        },
-    });
+        // Pagination using the skip method on the query
+        let { page, limit } = req.query;
+        page = +page.slice(0, 5) || 1;
+        console.log(page);
+        limit = +limit.slice(0, 5) || 10;
+        query = query.skip((page - 1) * limit).limit(limit);
+
+        const tours = await query;
+
+        res.status(200).json({
+            status: "success",
+            requestedAt: req.requestTime,
+            data: {
+                length: tours.length,
+                tours: tours,
+            },
+        });
+    } catch (err) {
+        res.status(404).json({
+            status: "fail",
+            message: err,
+        });
+
+        console.log(err);
+    }
 };
-module.exports.updateTour = function (req, res) {
-    res.status(200).json({
-        status: "success",
-        data: {
-            tour: tours.find((tour) => tour.id === +req.params.id),
-            message: "tour to be modified",
-        },
-    });
-};
-module.exports.deleteTour = function (req, res) {
+module.exports.getTour = async function (req, res) {
     // params stores the place holder variables
 
-    res.status(204).json({
-        status: "success",
-        data: null,
-    });
+    try {
+        const tour = await Tour.findById(req.params.id);
+        res.status(200).json({
+            status: "success",
+            data: {
+                tour: tour,
+            },
+        });
+    } catch (err) {
+        res.status(401).json({
+            status: "fail",
+            message: err,
+        });
+    }
+};
+module.exports.createTour = async function (req, res) {
+    // The create method on the Tour model will create and save the document to the database
+    try {
+        const newTour = await Tour.create(req.body);
+        res.status(201).json({
+            status: "success",
+            data: {
+                tour: newTour,
+            },
+        });
+    } catch (err) {
+        res.status(400).json({
+            status: "fail",
+            message: err,
+        });
+    }
+};
+module.exports.updateTour = async function (req, res) {
+    try {
+        const updatedTour = await Tour.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            {
+                // Returns the new updated document rather than the original
+                new: true,
+                // Validates data upon update
+                runValidators: true,
+            }
+        );
+        res.status(200).json({
+            status: "success",
+            data: {
+                tour: updatedTour,
+            },
+        });
+    } catch (err) {
+        res.status(401).json({
+            status: "fail",
+            message: err,
+        });
+    }
+};
+module.exports.deleteTour = async function (req, res) {
+    // params stores the place holder variables
+    try {
+        await Tour.findByIdAndDelete(req.params.id);
+        res.status(204).json({});
+    } catch (err) {
+        res.status(404).json({
+            status: "fail",
+            message: err,
+        });
+    }
 };
