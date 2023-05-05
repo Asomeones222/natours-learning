@@ -7,6 +7,9 @@ const {
     createTour,
     updateTour,
     deleteTour,
+    aliasTopFiveCheapest,
+    getTourStats,
+    getMonthlyPlan,
 } = require("../controllers/tourController");
 
 // Create a router for each api resource. We can connect this router as a middleware. This way we can create a route for each resource.
@@ -30,6 +33,14 @@ router
         createTour(req, res);
     });
 
+router.route("/top-5-cheap").get((req, res, next) => {
+    console.log("Called top 5 cheapest");
+    aliasTopFiveCheapest(req, res);
+    getAllTours(req, res);
+});
+
+router.route("/tour-stats").get(getTourStats);
+router.route("/monthly-plan/:year").get(getMonthlyPlan);
 router
     // This here is api/v1/tours/:id
     .route("/:id")

@@ -16,6 +16,6 @@
         "class-methods-use-this": "off",
         "prefer-destructuring": ["error", { "object": true, "array": false }],
         "no-unused-vars": ["off", { "argsIgnorePattern": "req|res|next|val" }],
-        "parserOptions": { "ecmaVersion": "es2020" }
+        "parserOptions": { "ecmaVersion": "11" }
     }
 }
